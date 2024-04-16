@@ -1,0 +1,3 @@
+# WIDTH = 50
+WIDTH = 25 
+HEIGHT = 30
