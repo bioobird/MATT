@@ -1,8 +1,14 @@
+import constants
+import window as w
 import pygame
 import random
 import time
 import math
 import pygame.font
+import enemy
+import enemy_tools
+import spaceship
+import utils
 
 # Initialize Pygame and its mixer
 pygame.init()
@@ -11,14 +17,14 @@ pygame.mixer.init()
 game_state = "start"
 
 # Initialize game window parameters, colors, global variables, etc.
-WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 700
-window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+window = pygame.display.set_mode((w.WIDTH, w.HEIGHT))
 
 # Shield parameters
-SHIELD_X = WINDOW_WIDTH - 150  # X-coordinate of the shield center
+SHIELD_X = w.WIDTH - 150  # X-coordinate of the shield center
 SHIELD_Y = 150  # Y-coordinate of the shield center
 SHIELD_RADIUS = 100  # Radius of the shield
 SHIELD_COLOR = (255, 255, 0)  # Yellow color (RGB)
+
 
 def draw_shield():
     pygame.draw.circle(window, SHIELD_COLOR, (SHIELD_X, SHIELD_Y), SHIELD_RADIUS)
@@ -40,48 +46,7 @@ def check_all_enemies_defeated():
 def generate_enemies(stage):
     global enemies
     enemies.clear()
-    
-    enemy_size_mapping = {
-        'enemy1': ENEMY1_SIZE,
-        'enemy2': ENEMY2_SIZE,
-        'boss3': BOSS3_SIZE,
-        'boss4': BOSS4_SIZE,
-        'boss5': BOSS5_SIZE,
-    }
-    
-    # Example logic for assigning health based on the stage and enemy type
-    if stage in [1, 2]:
-        enemy_count = 10
-        enemy_type = 'enemy1' if stage == 1 else 'enemy2'
-        enemy_health = enemy1_health if stage == 1 else enemy2_health
-    elif stage == 3:
-        enemy_count = 1
-        enemy_type = 'boss3'
-        enemy_health = boss3_health
-    elif stage == 4:
-        enemy_count = 1
-        enemy_type = 'boss4'
-        enemy_health = boss4_health
-    elif stage == 5:
-        enemy_count = 1
-        enemy_type = 'boss5'
-        enemy_health = boss5_health
-
-    enemy_size = enemy_size_mapping[enemy_type]
-    
-    for _ in range(enemy_count):
-        enemies.append({
-            'x': random.randint(0, WINDOW_WIDTH - enemy_size),
-            'y': 50 if stage >= 3 else random.randint(50, 150),
-            'width': enemy_size,
-            'height': enemy_size,  # Assuming square shape; adjust dimensions as necessary
-            'speed': random.choice([-1, 1]) * 2,
-            'health': enemy_health,
-            'is_boss': stage >= 3,
-            'enemy_type': enemy_type,
-            'mouth_state': 'closed',
-            'last_shot': pygame.time.get_ticks()
-        })
+    enemies = enemy_tools.get_enemies_for_stage(stage)
 
 
 def draw_boss_protection():
@@ -125,14 +90,14 @@ background_image = pygame.image.load("8734d3a2-2178-4459-aa4b-a3c1ad89aeb0.png")
 
 # Load the background image for the game stages
 game_background_image = pygame.image.load("714107fb-139b-49ca-bc8e-0dacf34d4fc2.png")
-game_background_image = pygame.transform.scale(game_background_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
+game_background_image = pygame.transform.scale(game_background_image, (w.WIDTH, w.HEIGHT))
 
 pygame.display.set_caption("Space Invaders")
 
 BLACK, WHITE, GREEN, RED, BLUE, ORANGE, YELLOW, PURPLE, PINK, CYAN, MAGENTA, LIME, OLIVE = (0, 0, 0), (255, 255, 255), (0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 165, 0), (255, 255, 0), (128, 0, 128), (255, 192, 203), (0, 255, 255), (255, 0, 255), (0, 255, 0), (128, 128, 0)
 
 # Define yellow circle parameters for boss stages
-YELLOW_CIRCLE_X = WINDOW_WIDTH - 150
+YELLOW_CIRCLE_X = w.WIDTH - 150
 YELLOW_CIRCLE_Y = 50
 YELLOW_CIRCLE_RADIUS = 100
 YELLOW_CIRCLE_COLOR = YELLOW  # Assuming YELLOW is already defined in your colors section
@@ -142,17 +107,9 @@ oscillation_amplitude = 10  # Feel free to adjust
 oscillation_speed = 0.05  # Feel free to adjust
 particles = []
 
-SPACESHIP_WIDTH = 50
-
-ENEMY1_SIZE = 25
-ENEMY2_SIZE = 45
-BOSS3_SIZE = SPACESHIP_WIDTH * 4  # You mentioned boss sizes in terms of the spaceship width
-BOSS4_SIZE = SPACESHIP_WIDTH * 5  # Adjust these as necessary
-BOSS5_SIZE = SPACESHIP_WIDTH * 6 
 # Player properties
-SPACESHIP_WIDTH, SPACESHIP_HEIGHT = 25, 30
-spaceship_x = (WINDOW_WIDTH - SPACESHIP_WIDTH) // 2
-spaceship_y = WINDOW_HEIGHT - SPACESHIP_HEIGHT - 10
+spaceship_x = (w.WIDTH - spaceship.WIDTH) // 2
+spaceship_y = w.HEIGHT - spaceship.HEIGHT - 10
 spaceship_speed = 5
 
 # Bullet properties
@@ -234,9 +191,9 @@ DORSAL_FIN_COLOR_BOSS4 = BLUE
 DORSAL_FIN_COLOR_BOSS5 = BLUE
 
 # Dorsal fin size definitions
-DORSAL_FIN_WIDTH_BOSS3 = BOSS3_SIZE // 2
-DORSAL_FIN_WIDTH_BOSS4 = BOSS4_SIZE // 2
-DORSAL_FIN_WIDTH_BOSS5 = BOSS5_SIZE // 4
+DORSAL_FIN_WIDTH_BOSS3 = utils.get_enemy_size('boss3')
+DORSAL_FIN_WIDTH_BOSS4 = utils.get_enemy_size('boss4')
+DORSAL_FIN_WIDTH_BOSS5 = utils.get_enemy_size('boss5')
 
 DORSAL_FIN_HEIGHT_BOSS3 = 40
 DORSAL_FIN_HEIGHT_BOSS4 = 60
@@ -330,9 +287,9 @@ def draw_dorsal_fin(x, y, enemy_width, enemy_height, enemy_type):
 
 def draw_angry_face(x, y, enemy):
     # Debugging - Remove after confirmation
-    # print(f"Drawing face for {enemy['enemy_type']} with mouth_state {enemy['mouth_state']} at (x:{x}, y:{y})")
+    # print(f"Drawing face for {enemy.enemy_type} with mouth_state {enemy['mouth_state']} at (x:{x}, y:{y})")
     
-    if enemy['enemy_type'].startswith('enemy'):
+    if enemy.enemy_type.startswith('enemy'):
         # Drawing code for regular enemies with enhanced eyes
         pygame.draw.circle(window, WHITE, (x + 5, y + 10), 7)  # Left eye
         pygame.draw.circle(window, WHITE, (x + 20, y + 10), 7)  # Right eye
@@ -340,7 +297,7 @@ def draw_angry_face(x, y, enemy):
         pygame.draw.circle(window, BLACK, (x + 20, y + 10), 5)  # Right pupil
         
         # Toggle mouth open/closed
-        if enemy['mouth_state'] == 'open':
+        if enemy.mouthIsOpen():
             pygame.draw.circle(window, BLACK, (x + 12, y + 20), 3)  # Mouth open
         else:
             pygame.draw.line(window, BLACK, (x + 5, y + 20), (x + 20, y + 20), 2)  # Mouth closed
@@ -352,13 +309,13 @@ def draw_angry_face(x, y, enemy):
         pygame.draw.circle(window, BLACK, (x + 60, y + 30), 10)  # Right pupil
 
         # Ensuring 'mouth_state' impacts boss mouth visuals. Draw open or closed mouth accordingly.
-        if enemy['mouth_state'] == 'open':
+        if enemy.mouthIsOpen():
             pygame.draw.circle(window, BLACK, (x + 37, y + 60), 20)  # Boss mouth open
         else:
             pygame.draw.line(window, BLACK, (x + 15, y + 60), (x + 60, y + 60), 5)  # Boss mouth closed # Boss mouth closed
     
     # Draw the tail for all enemies and bosses.
-    draw_tail(x, y, enemy['width'], enemy['height'], enemy['enemy_type'])
+    draw_tail(x, y, enemy.width, enemy.height, enemy.enemy_type)
 
 def draw_tail(x, y, enemy_width, enemy_height, enemy_type):
     global tail_angle
@@ -431,9 +388,6 @@ def draw_tail(x, y, enemy_width, enemy_height, enemy_type):
     # Your event handling
     pass
 
-def toggle_enemy_mouth_state(enemy):
-    enemy['mouth_state'] = 'open' if enemy['mouth_state'] == 'closed' else 'closed'
-
 def next_stage():
     global current_stage
     current_stage += 1
@@ -448,51 +402,51 @@ def check_all_enemies_defeated():
         else:
             next_stage()
 
-def generate_enemies(stage):
-    global enemies
-    enemies.clear()
+# def generate_enemies(stage):
+#     global enemies
+#     enemies.clear()
     
-    enemy_size_mapping = {
-        'enemy1': ENEMY1_SIZE,
-        'enemy2': ENEMY2_SIZE,
-        'boss3': BOSS3_SIZE,
-        'boss4': BOSS4_SIZE,
-        'boss5': BOSS5_SIZE,
-    }
+#     enemy_size_mapping = {
+#         'enemy1': ENEMY1_SIZE,
+#         'enemy2': ENEMY2_SIZE,
+#         'boss3': BOSS3_SIZE,
+#         'boss4': BOSS4_SIZE,
+#         'boss5': BOSS5_SIZE,
+#     }
     
-    # Example logic for assigning health based on the stage and enemy type
-    if stage in [1, 2]:
-        enemy_count = 10
-        enemy_type = 'enemy1' if stage == 1 else 'enemy2'
-        enemy_health = enemy1_health if stage == 1 else enemy2_health
-    elif stage == 3:
-        enemy_count = 1
-        enemy_type = 'boss3'
-        enemy_health = boss3_health
-    elif stage == 4:
-        enemy_count = 1
-        enemy_type = 'boss4'
-        enemy_health = boss4_health
-    elif stage == 5:
-        enemy_count = 1
-        enemy_type = 'boss5'
-        enemy_health = boss5_health
+#     # Example logic for assigning health based on the stage and enemy type
+#     if stage in [1, 2]:
+#         enemy_count = 10
+#         enemy_type = 'enemy1' if stage == 1 else 'enemy2'
+#         enemy_health = enemy1_health if stage == 1 else enemy2_health
+#     elif stage == 3:
+#         enemy_count = 1
+#         enemy_type = 'boss3'
+#         enemy_health = boss3_health
+#     elif stage == 4:
+#         enemy_count = 1
+#         enemy_type = 'boss4'
+#         enemy_health = boss4_health
+#     elif stage == 5:
+#         enemy_count = 1
+#         enemy_type = 'boss5'
+#         enemy_health = boss5_health
 
-    enemy_size = enemy_size_mapping[enemy_type]
+#     enemy_size = enemy_size_mapping[enemy_type]
     
-    for _ in range(enemy_count):
-        enemies.append({
-            'x': random.randint(0, WINDOW_WIDTH - enemy_size),
-            'y': 50 if stage >= 3 else random.randint(50, 150),
-            'width': enemy_size,
-            'height': enemy_size,  # Assuming square shape; adjust dimensions as necessary
-            'speed': random.choice([-1, 1]) * 2,
-            'health': enemy_health,
-            'is_boss': stage >= 3,
-            'enemy_type': enemy_type,
-            'mouth_state': 'closed',
-            'last_shot': pygame.time.get_ticks()
-        })
+#     for _ in range(enemy_count):
+#         enemies.append({
+#             'x': random.randint(0, w.WIDTH - enemy_size),
+#             'y': 50 if stage >= 3 else random.randint(50, 150),
+#             'width': enemy_size,
+#             'height': enemy_size,  # Assuming square shape; adjust dimensions as necessary
+#             'speed': random.choice([-1, 1]) * 2,
+#             'health': enemy_health,
+#             'is_boss': stage >= 3,
+#             'enemy_type': enemy_type,
+#             'mouth_state': 'closed',
+#             'last_shot': pygame.time.get_ticks()
+#         })
 def generate_particles(x, y, enemy_type):
     size_mapping = {
         'enemy1': 30,
@@ -556,18 +510,18 @@ def fire_bullet(rect, speed, is_enemy, enemy_type=None, enemy=None):
     (enemy_bullets if is_enemy else player_bullets).append(bullet)
 
     # Toggle mouth state (Ensure all necessary enemies, including bosses, have a 'mouth_state' attribute)
-    if enemy and 'mouth_state' in enemy:
-        toggle_enemy_mouth_state(enemy)
+    if enemy and enemy.mouthIsOpen():
+        enemy.toggleMouthState()
 
 def display_end_game_message(message):
     window.fill(BLACK)
     text = font.render(message, True, WHITE)
-    window.blit(text, (WINDOW_WIDTH // 2 - text.get_width() // 2, WINDOW_HEIGHT // 2 - text.get_height() // 2))
+    window.blit(text, (w.WIDTH // 2 - text.get_width() // 2, w.HEIGHT // 2 - text.get_height() // 2))
     pygame.display.update()
     pygame.time.wait(5000)  # Wait for 5 seconds
 
     background_image = pygame.image.load("8734d3a2-2178-4459-aa4b-a3c1ad89aeb0.png")
-background_image = pygame.transform.scale(background_image, (WINDOW_WIDTH, WINDOW_HEIGHT))
+background_image = pygame.transform.scale(background_image, (w.WIDTH, w.HEIGHT))
 
 def update_display(game_state):
     if game_state == "start":
@@ -582,7 +536,7 @@ def update_display(game_state):
 
         # Calculate the center position to align the text
         text_surface = title_font.render(text_content, True, BLUE)
-        text_rect = text_surface.get_rect(center=(WINDOW_WIDTH // 2, 100))
+        text_rect = text_surface.get_rect(center=(w.WIDTH // 2, 100))
 
         # Render the outline by drawing the text with an offset, in yellow
         outline_color = YELLOW
@@ -599,23 +553,23 @@ def update_display(game_state):
 
         # Render the "Start Game" button text
         start_text = button_font.render("Start Game", True, WHITE)
-        start_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50, 200, 50)
+        start_rect = pygame.Rect(w.WIDTH // 2 - 100, w.HEIGHT // 2 - 50, 200, 50)
         pygame.draw.rect(window, GREEN, start_rect)
         window.blit(start_text, (start_rect.centerx - start_text.get_width() // 2, start_rect.centery - start_text.get_height() // 2))
 
         # Render the "Quit Game" button text
         quit_text = button_font.render("Quit Game", True, WHITE)
-        quit_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 50, 200, 50)
+        quit_rect = pygame.Rect(w.WIDTH // 2 - 100, w.HEIGHT // 2 + 50, 200, 50)
         pygame.draw.rect(window, RED, quit_rect)
         window.blit(quit_text, (quit_rect.centerx - quit_text.get_width() // 2, quit_rect.centery - quit_text.get_height() // 2))
 
         # Render and draw the "High Scores" text
         high_score_text = button_font.render("High Scores:", True, WHITE)
-        window.blit(high_score_text, (50, WINDOW_HEIGHT - 150))
+        window.blit(high_score_text, (50, w.HEIGHT - 150))
 
         # Render and draw the high score value
         high_score_value_text = button_font.render(f"High Score: {high_score}", True, WHITE)
-        window.blit(high_score_value_text, (50, WINDOW_HEIGHT - 100))
+        window.blit(high_score_value_text, (50, w.HEIGHT - 100))
 
         # Update the display
         pygame.display.update()
@@ -629,61 +583,61 @@ def update_display(game_state):
         window.blit(score_text, (10, 10))  # Position (10, 10) for top-left corner
 
         # Draw the spaceship
-        pygame.draw.circle(window, WHITE, (spaceship_x + SPACESHIP_WIDTH // 2, spaceship_y + SPACESHIP_HEIGHT // 2), SPACESHIP_WIDTH // 2)
-        pygame.draw.circle(window, BLACK, (spaceship_x + SPACESHIP_WIDTH // 4, spaceship_y + SPACESHIP_HEIGHT // 4), SPACESHIP_WIDTH // 8)
-        pygame.draw.circle(window, BLACK, (spaceship_x + SPACESHIP_WIDTH * 3 // 4, spaceship_y + SPACESHIP_HEIGHT // 4), SPACESHIP_WIDTH // 8)
-        pygame.draw.line(window, BLACK, (spaceship_x + SPACESHIP_WIDTH // 4, spaceship_y + SPACESHIP_HEIGHT * 3 // 4), (spaceship_x + SPACESHIP_WIDTH * 3 // 4, spaceship_y + SPACESHIP_HEIGHT * 3 // 4), 2)
+        pygame.draw.circle(window, WHITE, (spaceship_x + spaceship.WIDTH // 2, spaceship_y + spaceship.HEIGHT // 2), spaceship.WIDTH // 2)
+        pygame.draw.circle(window, BLACK, (spaceship_x + spaceship.WIDTH // 4, spaceship_y + spaceship.HEIGHT // 4), spaceship.WIDTH // 8)
+        pygame.draw.circle(window, BLACK, (spaceship_x + spaceship.WIDTH * 3 // 4, spaceship_y + spaceship.HEIGHT // 4), spaceship.WIDTH // 8)
+        pygame.draw.line(window, BLACK, (spaceship_x + spaceship.WIDTH // 4, spaceship_y + spaceship.HEIGHT * 3 // 4), (spaceship_x + spaceship.WIDTH * 3 // 4, spaceship_y + spaceship.HEIGHT * 3 // 4), 2)
 
         # Draw the tabby stripes on the spaceship
         for i in range(3):
-            start_x = spaceship_x + SPACESHIP_WIDTH // 4
-            start_y = spaceship_y + SPACESHIP_HEIGHT // 4 + i * (SPACESHIP_HEIGHT // 8)
-            end_x = spaceship_x + SPACESHIP_WIDTH * 3 // 4
+            start_x = spaceship_x + spaceship.WIDTH // 4
+            start_y = spaceship_y + spaceship.HEIGHT // 4 + i * (spaceship.HEIGHT // 8)
+            end_x = spaceship_x + spaceship.WIDTH * 3 // 4
             end_y = start_y
             pygame.draw.line(window, BLACK, (start_x, start_y), (end_x, end_y), 2)
 
         # Draw enemies and their health bars (if applicable)
         for enemy in enemies:
             # Define enemy body color based on enemy type
-            if enemy['enemy_type'] == 'enemy1':
+            if enemy.enemy_type == 'enemy1':
                 enemy_color = BLUE
-            elif enemy['enemy_type'] == 'enemy2':
+            elif enemy.enemy_type == 'enemy2':
                 enemy_color = BLUE
-            elif enemy['enemy_type'] == 'boss3':
+            elif enemy.enemy_type == 'boss3':
                 enemy_color = BLUE
-            elif enemy['enemy_type'] == 'boss4':
+            elif enemy.enemy_type == 'boss4':
                 enemy_color = BLUE
-            elif enemy['enemy_type'] == 'boss5':
+            elif enemy.enemy_type == 'boss5':
                 enemy_color = BLUE
             else:
                 enemy_color = RED
 
             # Draw enemies as ovals
-            pygame.draw.ellipse(window, enemy_color, pygame.Rect(enemy['x'], enemy['y'], enemy['width'], enemy['height']))
-            draw_scales(enemy['x'] + enemy['width'] // 2, enemy['y'] + enemy['height'] // 2, enemy['width'], enemy['height'])
+            pygame.draw.ellipse(window, enemy_color, pygame.Rect(enemy.x, enemy.y, enemy.width, enemy.height))
+            draw_scales(enemy.x + enemy.width // 2, enemy.y + enemy.height // 2, enemy.width, enemy.height)
             
             # Draw the dorsal fin (if applicable)
-            draw_dorsal_fin(enemy['x'], enemy['y'], enemy['width'], enemy['height'], enemy['enemy_type'])
+            draw_dorsal_fin(enemy.x, enemy.y, enemy.width, enemy.height, enemy.enemy_type)
 
             # Draw the dorsal fin for each enemy using their specific type for appropriate adjustment.
-            draw_dorsal_fin(enemy['x'], enemy['y'], enemy['width'], enemy['height'], enemy['enemy_type'])
+            draw_dorsal_fin(enemy.x, enemy.y, enemy.width, enemy.height, enemy.enemy_type)
             
-            draw_angry_face(enemy['x'], enemy['y'], enemy)
-            draw_tail(enemy['x'], enemy['y'], enemy['width'], enemy['height'], enemy['enemy_type'])
+            draw_angry_face(enemy.x, enemy.y, enemy)
+            draw_tail(enemy.x, enemy.y, enemy.width, enemy.height, enemy.enemy_type)
 
             # Draw health bars for bosses
-            if enemy['is_boss']:
-                if enemy['enemy_type'] == 'boss3':
+            if enemy.is_boss:
+                if enemy.enemy_type == 'boss3':
                     max_health = boss3_health
                     health_bar_color = CYAN
-                elif enemy['enemy_type'] == 'boss4':
+                elif enemy.enemy_type == 'boss4':
                     max_health = boss4_health
                     health_bar_color = ORANGE
-                elif enemy['enemy_type'] == 'boss5':
+                elif enemy.enemy_type == 'boss5':
                     max_health = boss5_health
                     health_bar_color = PURPLE
-                health_percentage = enemy['health'] / max_health
-                pygame.draw.rect(window, health_bar_color, (WINDOW_WIDTH - 210, 10, 200 * health_percentage, 20))
+                health_percentage = enemy.health / max_health
+                pygame.draw.rect(window, health_bar_color, (w.WIDTH - 210, 10, 200 * health_percentage, 20))
 
         # Draw all bullets
         for bullet in player_bullets + enemy_bullets:
@@ -721,21 +675,21 @@ while running:
             if game_state == "start":
                 mouse_pos = pygame.mouse.get_pos()
                 # Check if the "Start Game" button was clicked
-                start_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50, 200, 50)
+                start_rect = pygame.Rect(w.WIDTH // 2 - 100, w.HEIGHT // 2 - 50, 200, 50)
                 if start_rect.collidepoint(mouse_pos):
                     game_state = "game"
                     score = 0  # Reset score for a new game session
                     enemies.clear()  # Clear enemies for a new session
                     generate_enemies(current_stage)
                 # Check if the "Quit Game" button was clicked
-                quit_rect = pygame.Rect(WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 50, 200, 50)
+                quit_rect = pygame.Rect(w.WIDTH // 2 - 100, w.HEIGHT // 2 + 50, 200, 50)
                 if quit_rect.collidepoint(mouse_pos):
                     running = False
         elif event.type == pygame.KEYDOWN:
             if game_state == "game":
                 if event.key == pygame.K_SPACE and (pygame.time.get_ticks() - last_player_shot_time > player_bullet_fire_rate):
                     last_player_shot_time = pygame.time.get_ticks()
-                    fire_bullet(pygame.Rect(spaceship_x + SPACESHIP_WIDTH // 2 - 10, spaceship_y, 20, 20), player_bullet_speed, False)
+                    fire_bullet(pygame.Rect(spaceship_x + spaceship.WIDTH // 2 - 10, spaceship_y, 20, 20), player_bullet_speed, False)
                     blaster_sound.play()
 
     if game_state == "start":
@@ -745,25 +699,25 @@ while running:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and spaceship_x > 0:
             spaceship_x -= spaceship_speed
-        if keys[pygame.K_RIGHT] and spaceship_x < WINDOW_WIDTH - SPACESHIP_WIDTH:
+        if keys[pygame.K_RIGHT] and spaceship_x < w.WIDTH - spaceship.WIDTH:
             spaceship_x += spaceship_speed
 
         # Enemy logic and bullet update
         now = pygame.time.get_ticks()
         for enemy in enemies[:]:
-            enemy['x'] += enemy['speed']
-            if enemy['x'] <= 0 or enemy['x'] + enemy['width'] >= WINDOW_WIDTH:
-                enemy['speed'] *= -1
+            enemy.x += enemy.speed
+            if enemy.x <= 0 or enemy.x + enemy.width >= w.WIDTH:
+                enemy.toggle_direction()
 
-            if now - enemy['last_shot'] > enemy_fire_rate and enemy['health'] > 0:
-                fire_bullet(pygame.Rect(enemy['x'] + enemy['width'] // 2, enemy['y'] + enemy['height'], 20, 20), enemy_bullet_speed, True, enemy['enemy_type'], enemy)
-                enemy['last_shot'] = now
+            if now - enemy.last_shot > enemy_fire_rate and enemy.health > 0:
+                fire_bullet(pygame.Rect(enemy.x + enemy.width // 2, enemy.y + enemy.height, 20, 20), enemy_bullet_speed, True, enemy.enemy_type, enemy)
+                enemy.last_shot = now
 
         # Processing enemy and player bullets
         for bullet in player_bullets[:] + enemy_bullets[:]:
             bullet['rect'].y += bullet['speed']
 
-            if bullet['rect'].y < 0 or bullet['rect'].y > WINDOW_HEIGHT:
+            if bullet['rect'].y < 0 or bullet['rect'].y > w.HEIGHT:
                 if bullet in player_bullets:
                     player_bullets.remove(bullet)
                 elif bullet in enemy_bullets:
@@ -772,19 +726,19 @@ while running:
                 # Collision detection for player bullets with enemies
                 if not bullet['is_enemy']:
                     for enemy in enemies[:]:
-                        if bullet['rect'].colliderect(pygame.Rect(enemy['x'], enemy['y'], enemy['width'], enemy['height'])):
+                        if bullet['rect'].colliderect(pygame.Rect(enemy.x, enemy.y, enemy.width, enemy.height)):
                             enemy_hit_sound.play()
                             player_bullets.remove(bullet)
-                            generate_particles(enemy['x'] + enemy['width'] // 2, enemy['y'] + enemy['height'] // 2, enemy['enemy_type'])
-                            enemy['health'] -= 1
-                            if enemy['health'] <= 0:
+                            generate_particles(enemy.x + enemy.width // 2, enemy.y + enemy.height // 2, enemy.enemy_type)
+                            enemy.health -= 1
+                            if enemy.health <= 0:
                                 enemies.remove(enemy)
-                                score += 5000 if enemy['enemy_type'] == 'boss5' else 1000 if enemy['is_boss'] else 500
+                                score += 5000 if enemy.enemy_type == 'boss5' else 1000 if enemy.is_boss else 500
                                 update_high_score(score)
                             break
 
         # Collision detection for enemy bullets with the player
-        player_rect = pygame.Rect(spaceship_x, spaceship_y, SPACESHIP_WIDTH, SPACESHIP_HEIGHT)
+        player_rect = pygame.Rect(spaceship_x, spaceship_y, spaceship.WIDTH, spaceship.HEIGHT)
         for bullet in enemy_bullets[:]:
             if player_rect.colliderect(bullet['rect']):
                 player_hit_sound.play()
